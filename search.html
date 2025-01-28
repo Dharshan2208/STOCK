@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Market Search</title>
+    <style>
+    body {
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+        background-color: #f8f9fa;
+        color: #333;
+    }
+
+    .search-container {
+        text-align: center;
+        margin: 2rem 0;
+        padding: 1.5rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    #stockInput {
+        padding: 0.8rem 1.2rem;
+        width: 60%;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 1rem;
+        margin-right: 0.5rem;
+        transition: border-color 0.3s ease;
+    }
+
+    #stockInput:focus {
+        outline: none;
+        border-color: #2563eb;
+    }
+
+    #searchBtn {
+        padding: 0.8rem 1.5rem;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    #searchBtn:hover {
+        background: #1d4ed8;
+        transform: translateY(-1px);
+    }
+
+    .stock-info {
+        background: white;
+        width:1400px;
+        height:1400px;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-top: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .stock-info h3 {
+        margin: 0 0 1.5rem 0;
+        color: #1e3a8a;
+        font-size: 1.5rem;
+    }
+
+    .data-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .data-card {
+        padding: 1.2rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        border-left: 4px solid #2563eb;
+    }
+
+    .data-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .data-row:last-child {
+        border-bottom: none;
+    }
+
+    .data-label {
+        color: #64748b;
+        font-size: 0.9rem;
+    }
+
+    .data-value {
+        color: #1e293b;
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .price-high {
+        color: #16a34a;
+    }
+
+    .price-low {
+        color: #dc2626;
+    }
+
+    .section-title {
+        color: #2563eb;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 1.5rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .loading {
+        text-align: center;
+        padding: 2rem;
+        color: #64748b;
+        font-size: 1.1rem;
+    }
+
+    .error {
+        color: #dc2626;
+        background: #fee2e2;
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    @media (max-width: 640px) {
+        body {
+            padding: 1rem;
+        }
+
+        #stockInput {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        #searchBtn {
+            width: 100%;
+        }
+
+        .data-group {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+</head>
+<body>
+    <div class="search-container">
+        <h2>📈 Stock Market Search</h2>
+        <input type="text" id="stockInput" placeholder="Enter stock symbol (e.g., AAPL)">
+        <button id="searchBtn" onclick="fetchStockData()">Search</button>
+    </div>
+    <div id="stockResults"></div>
+
+    <script>
+        // const API_KEY = '34DAA7YBL4DQDD8A'; 
+        const API_KEY='WZLAXNP6X3BUIASW';
+
+        async function fetchStockData() {
+            const symbol = document.getElementById('stockInput').value.toUpperCase();
+            const resultsDiv = document.getElementById('stockResults');
+            resultsDiv.innerHTML = '<div class="loading">Fetching stock data...</div>';
+
+            try {
+                // Fetch both real-time data and fundamental data
+                const [priceData, overviewData] = await Promise.all([
+                    fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${API_KEY}`)
+                        .then(res => res.json()),
+                    fetch(`https://www.alphavantage.co/query?function=OVERVIEW&symbol=${symbol}&apikey=${API_KEY}`)
+                        .then(res => res.json())
+                ]);
+
+                if (priceData['Error Message'] || overviewData['Error Message']) {
+                    throw new Error('Invalid stock symbol');
+                }
+
+                const latestDate = Object.keys(priceData['Time Series (Daily)'])[0];
+                const dailyData = priceData['Time Series (Daily)'][latestDate];
+
+                resultsDiv.innerHTML = `
+                    <div class="stock-info">
+                        <h3>${overviewData.Name} (${symbol})</h3>
+                        
+                        <div class="section-title">Price Information</div>
+                        <div class="data-row">
+                            <span class="data-label">Current Price</span>
+                            <span class="data-value">$${parseFloat(dailyData['4. close']).toFixed(2)}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Daily High</span>
+                            <span class="data-value price-high">$${parseFloat(dailyData['2. high']).toFixed(2)}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Daily Low</span>
+                            <span class="data-value price-low">$${parseFloat(dailyData['3. low']).toFixed(2)}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Volume</span>
+                            <span class="data-value">${parseInt(dailyData['5. volume']).toLocaleString()}</span>
+                        </div>
+
+                        <div class="section-title">Fundamental Analysis</div>
+                        <div class="data-row">
+                            <span class="data-label">P/E Ratio</span>
+                            <span class="data-value">${overviewData.PERatio || 'N/A'}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">EPS</span>
+                            <span class="data-value">${overviewData.EPS || 'N/A'}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Market Cap</span>
+                            <span class="data-value">$${(overviewData.MarketCapitalization / 1000000000).toFixed(2)}B</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Dividend Yield</span>
+                            <span class="data-value">${(overviewData.DividendYield * 100).toFixed(2)}%</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">52 Week High</span>
+                            <span class="data-value">$${overviewData['52WeekHigh']}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">52 Week Low</span>
+                            <span class="data-value">$${overviewData['52WeekLow']}</span
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">EBITDA</span>
+                            <span class="data-value">$${(overviewData.EBITDA / 1000000).toFixed(2)}M</span>
+                        </div>
+
+                        <div class="section-title">Valuation Ratios</div>
+                        <div class="data-row">
+                            <span class="data-label">PEG Ratio</span>
+                            <span class="data-value">${overviewData.PEGRatio || 'N/A'}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Price to Book</span>
+                            <span class="data-value">${overviewData.PriceToBookRatio || 'N/A'}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">EV to EBITDA</span>
+                            <span class="data-value">${overviewData.EVToEBITDA || 'N/A'}</span>
+                        </div>
+
+                        <div class="section-title">Performance Metrics</div>
+                        <div class="data-row">
+                            <span class="data-label">Profit Margin</span>
+                            <span class="data-value">${(overviewData.ProfitMargin * 100).toFixed(2)}%</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">ROE</span>
+                            <span class="data-value">${(overviewData.ReturnOnEquityTTM * 100).toFixed(2)}%</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Operating Margin</span>
+                            <span class="data-value">${(overviewData.OperatingMarginTTM * 100).toFixed(2)}%</span>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                resultsDiv.innerHTML = `<div class="loading">❌ Error: ${error.message || 'Invalid symbol or API limit reached'}</div>`;
+            }
+        }
+
+        document.getElementById('stockInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') fetchStockData();
+        });
+    </script>
+</body>
+</html>
+
+
+<!-- WZLAXNP6X3BUIASW -->
